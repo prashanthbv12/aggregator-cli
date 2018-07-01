@@ -20,6 +20,9 @@ namespace aggregator.cli
         [Option('e', "enable", SetName = "enable", HelpText = "Enable the rule.")]
         public bool Enable { get; set; }
 
+        [Option('l', "log", SetName = "log", Default = 10, HelpText = "Get the last n logs.")]
+        public int Log { get; set; }
+
         internal override async Task<int> RunAsync()
         {
             var azure = await AzureLogon.Load()?.LogonAsync();
@@ -41,6 +44,9 @@ namespace aggregator.cli
             if (Disable || Enable)
             {
                 ok = await rules.EnableAsync(Instance, Name, Disable);
+            } else
+            {
+                ok = await rules.GetLogAsync(Instance, Name, Log);
             }
             return ok ? 0 : 1;
         }

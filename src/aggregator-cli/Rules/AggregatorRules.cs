@@ -264,5 +264,56 @@ namespace aggregator.cli
                     return false;
             }
         }
+
+        internal async Task<bool> GetLogAsync(string instance, string name, int log)
+        {
+            var instances = new AggregatorInstances(azure);
+            using (var client = new HttpClient())
+            using (var request = await instances.GetKuduRequestAsync(instance, HttpMethod.Get, $"/logstream/application"))
+            using (var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    return false;
+                }
+
+                Stream _currentStream = await response.Content.ReadAsStreamAsync();
+
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                Task.Run(async () =>
+                {
+                    using (var reader = new StreamReader(_currentStream))
+                    {
+                        var previous = new List<string>();
+                        while (!reader.EndOfStream && _currentStream != null)
+                        {
+                            //We are ready to read the stream
+                            try
+                            {
+                                var currentLine = await reader.ReadLineAsync();
+
+                                //it doubles up for some reason :/
+                                if (previous.Contains(currentLine))
+                                {
+                                    continue;
+                                }
+
+                                previous.Add(currentLine);
+
+                                Console.WriteLine($" > {currentLine}");
+                            }
+                            catch (Exception ex)
+                            {
+                                return true;
+                            }
+
+                        }
+                        return true;
+                    }
+                });
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                return true;
+            }
+        }
     }
 }
